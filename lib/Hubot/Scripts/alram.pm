@@ -13,117 +13,61 @@ sub load {
     my ( $class, $robot ) = @_;
     
     my $cron = AnyEvent::DateTime::Cron->new(time_zone => 'Asia/Seoul');
-    my $redis = RedisDB->new(host => 'localhost', port => 6379);
-    my $flag = 'off';
-    my $memo_time;
-    my $jotter;
 
-    $robot->hear(
-        qr/^memo (.*?) (.+)/i,
-
-        sub {
-            my $msg = shift;
-
-            $jotter = $msg->message->user->{name};
-            my $reserv_time = $msg->match->[0];
-            my $user_memo = $msg->match->[1];
-
-            my $dt = DateTime->now( time_zone => 'Asia/Seoul' );
-            my ($ymd, $year, $month, $day, $hour, $min ) = ($dt->ymd, $dt->year, $dt->month, $dt->day, $dt->hour, $dt->min);
-
-            if ( $month < 10 ) { $month = "0"."$month"; }
-            if ( $day < 10 ) { $day = "0"."$day"; }
-            if ( $hour < 10 ) { $hour = "0"."$hour"; }
-            if ( $min < 10 ) { $min = "0"."$min"; }
-
-            given ($reserv_time) {
-                when ( /^\d\d\d\d\-\d\d\-\d\d\-\d\d:\d\d$/ ) { $memo_time = $reserv_time }
-                when ( /^\d\d\-\d\d\-\d\d:\d\d$/ ) { $memo_time = "$year"."-$reserv_time" }
-                when ( /^\d\d\:\d\d$/ ) { $memo_time = "$year"."-$month"."-$day"."-$reserv_time" }
-                default { $memo_time = 'wrong' }
-            }
-
-            if ( $memo_time eq 'wrong' ) { 
-                $msg->send( "Time format is wrong!");
-            }
-            else {
-                $redis->hmset("memo_log", "$memo_time", "$user_memo");
-                $msg->send('Save Memo has been completed!');
-            }
-            $redis->bgsave;
-        }
-    );
-
-    $robot->hear(
-        qr/^memo:? on *$/i,
-
+    $robot->enter(
             sub {
                     my $msg = shift;
-            
-                    my $gm_msg = '좋은아침 입니다 서울.pm ascii GM';
-                    my $ga_msg = '맛점 하세욤♥  ascii GA';
-                    my $gn_msg = '다들 칼퇴 하셨으면 좋겠습니다! ascii GN';
+                    my $user = $msg->message->user->{name};
+                    my ( $body, $hdr );
+                    my $decode_body;
 
-                    $msg->send('It has been started memobot viewer ...');
+                    if ( $user =~ /^test/ ) {
+                
+                        my $gm_msg = "ascii GM\n 2013년 펄 크리스마스 달력 사랑해 주세요!.";
+                        my $ga_msg = '점심시간이네요 다들 맛점 하세요♥ ';
+                        my $gn_msg = 'ascii GN ';
+                        my $test_msg = 'TEST MSG 입니다. ';
 
-                    $cron->add( '*/1 * * * *'  => sub {
-                        my $dt = DateTime->now( time_zone => 'Asia/Seoul' );
-                        my ($ymd, $year, $month, $day, $hour, $min ) = ($dt->ymd, $dt->year, $dt->month, $dt->day, $dt->hour, $dt->min);
+                        $msg->http("http://openapi.seoul.go.kr:8088/$ENV{HUBOT_OPENAPI_KEY}/xml/ForecastWarningMinuteParticleOfDustService/1/1/")->get(
+                            sub {
+                                    ( $body, $hdr ) = @_;
+                                    return ( !$body || $hdr->{Status} !~ /^2/ );
+                                    $decode_body = decode ( 'UTF-8', $body ); 
+                                }
+                            );
 
-                        if ( $month < 10 ) { $month = "0"."$month"; }
-                        if ( $day < 10 ) { $day = "0"."$day"; }
-                        if ( $hour < 10 ) { $hour = "0"."$hour"; }
-                        if ( $min < 10 ) { $min = "0"."$min"; }
+                        $cron->add( '*/1 * * * *'  => sub {
+                            my $dt = DateTime->now( time_zone => 'Asia/Seoul' );
+                            my ($ymd, $year, $month, $day, $hour, $min ) = ($dt->ymd, $dt->year, $dt->month, $dt->day, $dt->hour, $dt->min);
 
-                        my $now_time = "$ymd".'-'."$hour".':'."$min";
-                        my $memo_ref = $redis->hkeys("memo_log");
-                        my @memo_keys = @${memo_ref};
+                            if ( $month < 10 ) { $month = "0"."$month"; }
+                            if ( $day < 10 ) { $day = "0"."$day"; }
+                            if ( $hour < 10 ) { $hour = "0"."$hour"; }
+                            if ( $min < 10 ) { $min = "0"."$min"; }
 
-                        given ($now_time) {
-                        when ( /^\d\d\d\d\-\d\d\-\d\d\-09:00$/ ) { $msg->send("$gm_msg"); }
-                        when ( /^\d\d\d\d\-\d\d\-\d\d\-12:00$/ ) { $msg->send("$ga_msg"); }
-                        when ( /^\d\d\d\d\-\d\d\-\d\d\-18:00$/ ) { $msg->send("$gn_msg"); }
-                        default { $memo_time = 'wrong' }
-                        }
+                            my $now_time = "$ymd".'-'."$hour".':'."$min";
 
-                        foreach my $memo_key ( @memo_keys ) {
-                            if ( $now_time eq $memo_key ) {
-                                my $table = Text::ASCIITable->new({ 
-                                        headingText => 'Memo - Viewer', 
-                                        utf8        => 0,
-                                });
-
-                                my $show_memo = $redis->hmget("memo_log", "$memo_key");
-                                my $show_memo_decode = decode("utf-8", $show_memo->[0]);
-
-                                $table->setCols("Jotter- $jotter / Time- $memo_key");
-                                $table->addRow("$show_memo_decode");
-                                $msg->send("\n", split /\n/, $table);
+                            given ($now_time) {
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { $msg->send("$gm_msg"); }
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-12:00$/ ) { $msg->send("$ga_msg"); }
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-18:00$/ ) { $msg->send("$gn_msg"); }
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-14:33$/ ) { $msg->send("$body"); }
                             }
                         }
-                    }
-                );
+                    );
+                }
                 $cron->start;
-                $flag = 'on';
-            }
-    );
-
-    $robot->hear(
-        qr/^memo:? status *$/i,    
-
-            sub {
-                my $msg = shift;
-                $msg->send("memobot status is [$flag] ...");
             }
     );
 }
+
 1;
 
 =pod
 
 =head1 Name 
 
-    Hubot::Scripts::memo
+    Hubot::Scripts::alram
  
 =head1 SYNOPSIS
 
