@@ -14,7 +14,9 @@ sub load {
     
     my $cron = AnyEvent::DateTime::Cron->new(time_zone => 'Asia/Seoul');
 
-    $robot->enter(
+    $robot->hear(
+            qr/^test/,
+
             sub {
                     my $msg = shift;
                     my $user = $msg->message->user->{name};
@@ -33,6 +35,9 @@ sub load {
                                     ( $body, $hdr ) = @_;
                                     return ( !$body || $hdr->{Status} !~ /^2/ );
                                     $decode_body = decode ( 'UTF-8', $body ); 
+                                    if ( $decode_body =~ /<list_total_count>(\d+)<\/list_total_count>/ ) {
+                                        print "$1\n";
+                                    }
                                 }
                             );
 
