@@ -37,16 +37,23 @@ sub load {
                             if ( $min < 10 ) { $min = "0"."$min"; }
 
                             my $now_time = "$ymd".'-'."$hour".':'."$min";
-                            my $pods_msg = pods();
 
                             given ($now_time) {
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { $msg->send("$gm_msg"); }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-12:00$/ ) { $msg->send("$ga_msg"); }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-15:16$/ ) { 
-                                    $msg->send($std_msg);
-                                    $msg->send($pods_msg);
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { 
+                                    $msg->send("$gm_msg"); 
+                                    $msg->send($now_time);
+                                    pods($msg);
                                 }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-18:00$/ ) { $msg->send("$gn_msg"); }
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-11:50$/ ) { 
+                                    $msg->send("$ga_msg"); 
+                                    $msg->send($now_time);
+                                    pods($msg);
+                                }
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-17:30$/ ) { 
+                                    $msg->send("$gn_msg"); 
+                                    $msg->send($now_time);
+                                    pods($msg);
+                                }
                             }
                         }
                     );
@@ -78,7 +85,7 @@ sub pods {
                 if ( $decode_body =~ /<ALARM_CNDT><!\[CDATA\[(.+)/ ) {
                     $cdata = $1;
                 }
-            return ("오염물질-$pol\[$cai\] 미세먼지 농도-$cdata"); 
+            $msg->send("미세먼지 예보=> 오염물질-$pol\[$cai\] 미세먼지 농도-$cdata"); 
             }
     );
 }
