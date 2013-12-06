@@ -20,7 +20,7 @@ sub load {
                     my $msg = shift;
                     my $user = $msg->message->user->{name};
 
-                    if ( $user =~ /^test/) {
+                    if ( $user =~ /^misskang/) {
                 
                         my $gm_msg = "ascii GM\n 2013년 펄 크리스마스 달력 사랑해 주세요!.";
                         my $ga_msg = '점심시간이네요 다들 맛점 하세요♥ ';
@@ -41,17 +41,14 @@ sub load {
                             given ($now_time) {
                                 when ( /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { 
                                     $msg->send("$gm_msg"); 
-                                    $msg->send($now_time);
                                     pods($msg);
                                 }
                                 when ( /^\d\d\d\d\-\d\d\-\d\d\-11:50$/ ) { 
                                     $msg->send("$ga_msg"); 
-                                    $msg->send($now_time);
                                     pods($msg);
                                 }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-17:30$/ ) { 
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-17:45$/ ) { 
                                     $msg->send("$gn_msg"); 
-                                    $msg->send($now_time);
                                     pods($msg);
                                 }
                             }
@@ -85,7 +82,7 @@ sub pods {
                 if ( $decode_body =~ /<ALARM_CNDT><!\[CDATA\[(.+)/ ) {
                     $cdata = $1;
                 }
-            $msg->send("미세먼지 예보=> 오염물질-$pol\[$cai\] 미세먼지 농도-$cdata"); 
+            $msg->send("[미세먼지 예보=> 오염물질-$pol\[$cai\] 미세먼지 농도-$cdata]"); 
             }
     );
 }
