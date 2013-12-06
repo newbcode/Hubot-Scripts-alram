@@ -11,35 +11,21 @@ use AnyEvent::DateTime::Cron;
 
 sub load {
     my ( $class, $robot ) = @_;
-    
+
     my $cron = AnyEvent::DateTime::Cron->new(time_zone => 'Asia/Seoul');
 
-    $robot->hear(
-            qr/^test/,
+    $robot->enter(
 
             sub {
                     my $msg = shift;
                     my $user = $msg->message->user->{name};
-                    my ( $body, $hdr );
-                    my $decode_body;
 
-                    if ( $user =~ /^test/ ) {
+                    if ( $user =~ /^test/) {
                 
                         my $gm_msg = "ascii GM\n 2013년 펄 크리스마스 달력 사랑해 주세요!.";
                         my $ga_msg = '점심시간이네요 다들 맛점 하세요♥ ';
-                        my $gn_msg = 'ascii GN ';
-                        my $test_msg = 'TEST MSG 입니다. ';
-
-                        $msg->http("http://openapi.seoul.go.kr:8088/$ENV{HUBOT_OPENAPI_KEY}/xml/ForecastWarningMinuteParticleOfDustService/1/1/")->get(
-                            sub {
-                                    ( $body, $hdr ) = @_;
-                                    return ( !$body || $hdr->{Status} !~ /^2/ );
-                                    $decode_body = decode ( 'UTF-8', $body ); 
-                                    if ( $decode_body =~ /<list_total_count>(\d+)<\/list_total_count>/ ) {
-                                        print "$1\n";
-                                    }
-                                }
-                            );
+                        my $gn_msg = '수고 많으셨습니다. 다들 컴백홈!';
+                        my $std_msg = '[0∼30:좋음][31∼80보통][81∼120/민감군 영향][121∼200:나쁨][201∼300:매우나쁨][301∼600:위험]';
 
                         $cron->add( '*/1 * * * *'  => sub {
                             my $dt = DateTime->now( time_zone => 'Asia/Seoul' );
@@ -51,17 +37,48 @@ sub load {
                             if ( $min < 10 ) { $min = "0"."$min"; }
 
                             my $now_time = "$ymd".'-'."$hour".':'."$min";
+                            my $pods_msg = pods();
 
                             given ($now_time) {
                                 when ( /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { $msg->send("$gm_msg"); }
                                 when ( /^\d\d\d\d\-\d\d\-\d\d\-12:00$/ ) { $msg->send("$ga_msg"); }
+                                when ( /^\d\d\d\d\-\d\d\-\d\d\-15:16$/ ) { 
+                                    $msg->send($std_msg);
+                                    $msg->send($pods_msg);
+                                }
                                 when ( /^\d\d\d\d\-\d\d\-\d\d\-18:00$/ ) { $msg->send("$gn_msg"); }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-14:33$/ ) { $msg->send("$body"); }
                             }
                         }
                     );
                 }
                 $cron->start;
+            }
+    );
+}
+
+sub pods {
+    my $msg = shift;
+    my ($today, $pol, $cai, $cdata);
+
+    $msg->http("http://openapi.seoul.go.kr:8088/$ENV{HUBOT_OPENAPI_KEY}/xml/ForecastWarningMinuteParticleOfDustService/1/1/")->get(
+            sub {
+                my ( $body, $hdr ) = @_;
+                return if ( !$body || $hdr->{Status} !~ /^2/ );
+                my $decode_body = decode ( 'UTF-8', $body ); 
+
+                if ( $decode_body =~ /<APPLC_DT>(\d+)<\/APPLC_DT>/ ) {
+                    $today = $1;
+                }
+                if ( $decode_body =~ /<POLLUTANT>(.*?)<\/POLLUTANT>/ ) {
+                    $pol = $1;
+                }
+                if ( $decode_body =~ /<CAISTEP>(.*?)<\/CAISTEP>/ ) {
+                    $cai = $1;
+                }
+                if ( $decode_body =~ /<ALARM_CNDT><!\[CDATA\[(.+)/ ) {
+                    $cdata = $1;
+                }
+            return ("오염물질-$pol\[$cai\] 미세먼지 농도-$cdata"); 
             }
     );
 }
