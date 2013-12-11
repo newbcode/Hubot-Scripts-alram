@@ -27,7 +27,7 @@ sub load {
                         my $gn_msg = '수고 많으셨습니다. 다들 컴백홈!';
                         my $std_msg = '[0∼30:좋음][31∼80보통][81∼120/민감군 영향][121∼200:나쁨][201∼300:매우나쁨][301∼600:위험]';
 
-                        $cron->add( '*/1 * * * *'  => sub {
+                        $cron->add( '*/5 * * * *'  => sub {
                             my $dt = DateTime->now( time_zone => 'Asia/Seoul' );
                             my ($ymd, $year, $month, $day, $hour, $min ) = ($dt->ymd, $dt->year, $dt->month, $dt->day, $dt->hour, $dt->min);
 
@@ -38,19 +38,17 @@ sub load {
 
                             my $now_time = "$ymd".'-'."$hour".':'."$min";
 
-                            given ($now_time) {
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { 
-                                    $msg->send("$gm_msg"); 
-                                    pods($msg);
-                                }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-11:50$/ ) { 
-                                    $msg->send("$ga_msg"); 
-                                    pods($msg);
-                                }
-                                when ( /^\d\d\d\d\-\d\d\-\d\d\-17:45$/ ) { 
-                                    $msg->send("$gn_msg"); 
-                                    pods($msg);
-                                }
+                            if ( $now_time =~ /^\d\d\d\d\-\d\d\-\d\d\-09:30$/ ) { 
+                                $msg->send($gm_msg); 
+                                pods($msg);
+                            }
+                            elsif ( $now_time =~ /^\d\d\d\d\-\d\d\-\d\d\-11:50$/ ) { 
+                                $msg->send($ga_msg); 
+                                pods($msg);
+                            }
+                            elsif ( $now_time =~ /^\d\d\d\d\-\d\d\-\d\d\-18:35$/ ) { 
+                                $msg->send($gn_msg); 
+                                pods($msg);
                             }
                         }
                     );
